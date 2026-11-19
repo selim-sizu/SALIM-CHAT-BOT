@@ -1,0 +1,24 @@
+{
+  "name": "salim-chat-bot",
+  "version": "1.0.0",
+  "description": "SALIM CHAT BOT - Custom reply Messenger bot",
+  "main": "Main.js",
+  "author": "Salim Ahmad",
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node Main.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "express-session": "^1.18.1"
+  }
+}
