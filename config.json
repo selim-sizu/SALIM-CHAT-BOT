@@ -1,0 +1,7 @@
+{
+  "botName": "SALIM-CHAT-BOT",
+  "prefix": "/",
+  "ownerID": "আপনার_ফেসবুক_আইডি_এখানে",
+  "adminIDs": ["আপনার_ফেসবুক_আইডি_এখানে"],
+  "welcomeVideoURL": "https://example.com/welcome.mp4"
+}
