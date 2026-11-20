@@ -7,14 +7,72 @@ function sendSafe(api, threadID, message) {
     .catch(err => console.error("❌ admin send failed:", err.message));
 }
 
+// 🕒 বাংলাদেশ সময় (Asia/Dhaka)
+function getBangladeshTime() {
+  const now = new Date();
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Dhaka",
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    }).format(now);
+  } catch (_) {
+    return now.toString();
+  }
+}
+
+// 🎨 OWNER DETAILS কার্ড
+function ownerCard(time) {
+  return `┌───────────────⭓
+│ 𝗢𝗪𝗡𝗘𝗥 𝗗𝗘𝗧𝗔𝗜𝗟𝗦
+├───────────────
+│👤 𝐍𝐚𝐦𝐞 : 𝐒𝐞𝐥𝐢𝐦 𝐒𝐢𝐳𝐮 🦋
+│🚹 𝐆𝐞𝐧𝐝𝐞𝐫 : 𝐌𝐚𝐥𝐞
+│❤️ 𝐑𝐞𝐥𝐚𝐭𝐢𝐨𝐧 : 𝐒𝐢𝐧𝐠𝐥𝐞
+│🎂 𝐀𝐠𝐞 : 𝟏𝟖+
+│🕌 𝐑𝐞𝐥𝐢𝐠𝐢𝐨𝐧 : 𝐈𝐬𝐥𝐚𝐦
+│🎓 𝐄𝐝𝐮𝐜𝐚𝐭𝐢𝐨𝐧 : 𝐇𝐒𝐂
+│🏡 𝐀𝐝𝐝𝐫𝐞𝐬𝐬 : 𝐌𝐞𝐡𝐞𝐫𝐩𝐮𝐫 
+└───────────────⭓
+
+┌───────────────⭓
+│ 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗟𝗜𝗡𝗞𝗦
+├───────────────
+│📘 𝗙𝗮𝗰𝗲𝗯𝗼𝗼𝗸:
+│https://fb.com/100075452558091
+│💬 𝗪𝗵𝗮𝘁𝘀𝗔𝗽𝗽:
+│https://wa.me/01618119633
+└───────────────⭓
+
+┌───────────────⭓
+│ 🕒 𝗨𝗽𝗱𝗮𝘁𝗲𝗱 𝗧𝗶𝗺𝗲
+├───────────────
+│ ${time}
+└───────────────⭓`;
+}
+
 module.exports = {
   config: {
     name: "admin",
-    aliases: ["adm"],
-    description: "বট অ্যাডমিন ম্যানেজ করে"
+    aliases: ["adm", "owner", "মালিক"],
+    description: "অ্যাডমিন তথ্য ও ম্যানেজমেন্ট"
   },
+
   run: async ({ api, event, args, config }) => {
     const { threadID, senderID, mentions, messageReply } = event;
+    const sub = (args[0] || "").toLowerCase();
+
+    // ✅ যে কেউ "admin" বা "admin info" লিখলে কার্ড দেখবে
+    if (sub === "" || sub === "info" || sub === "owner") {
+      return sendSafe(api, threadID, ownerCard(getBangladeshTime()));
+    }
+
+    // নিচের সব কমান্ডের জন্য অ্যাডমিন পারমিশন দরকার
     const adminKey = Array.isArray(config.adminIDs) ? "adminIDs" : "admins";
     let admins = Array.isArray(config[adminKey]) ? [...config[adminKey]] : [];
     const ownerID = config.ownerID;
@@ -24,8 +82,6 @@ module.exports = {
       return sendSafe(api, threadID, "❌ এই কমান্ড শুধু অ্যাডমিনদের জন্য।");
     }
 
-    const sub = (args[0] || "").toLowerCase();
-
     function getTargetID() {
       if (messageReply && messageReply.senderID) return messageReply.senderID;
       if (mentions && Object.keys(mentions).length > 0) return Object.keys(mentions)[0];
@@ -34,7 +90,7 @@ module.exports = {
     }
 
     // admin list
-    if (sub === "list" || sub === "") {
+    if (sub === "list" || sub === "all") {
       const list = admins.length
         ? admins.map((id, i) => `${i + 1}. ${id}`).join("\n")
         : "কোনো অ্যাডমিন নেই।";
@@ -101,11 +157,12 @@ module.exports = {
       return sendSafe(api, threadID, `✅ অ্যাডমিন বাদ দেওয়া হয়েছে: ${uid}`);
     }
 
-    // help
+    // অজানা sub → help
     return sendSafe(
       api,
       threadID,
       "📌 Admin কমান্ড:\n" +
+        "• /admin — Owner details\n" +
         "• /admin list — অ্যাডমিন লিস্ট\n" +
         "• /admin add @mention / reply / UID\n" +
         "• /admin remove @mention / reply / UID"
