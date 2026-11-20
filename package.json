@@ -7,7 +7,7 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "eriic-pandit-fca": "^5.0.0",
+    "biar-fca": "latest",
     "express": "^4.19.2",
     "ytdl-core": "^4.11.5"
   },
