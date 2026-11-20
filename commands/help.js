@@ -17,6 +17,7 @@ module.exports = {
       msg += ` — ${cfg.description || "কোনো বিবরণ নেই"}\n`;
     }
 
-    api.sendMessageMqtt(msg, event.threadID);
+    api.sendMessageMqtt(random, event.threadID)
+  .catch(err => console.error("❌ send failed:", err.message));
   }
 };
