@@ -36,3 +36,53 @@
 ---
 
 ## 📁 Project Structure
+
+SALIM-CHAT-BOT/
+├── index.js                 # Main entry point
+├── config.json              # Bot configuration
+├── appstate.json            # Facebook session (NEVER commit!)
+├── package.json
+├── .gitignore
+├── README.md
+│
+├── utils/
+│   ├── keep_alive.js        # Express server for UptimeRobot
+│   └── youtube.js           # YouTube audio downloader
+│
+├── commands/
+│   ├── admin.js             # Admin management + owner card
+│   ├── help.js              # Styled help menu
+│   ├── uid.js               # UID finder
+│   ├── owner.js             # Owner info
+│   ├── funny.js             # Funny replies
+│   ├── welcome.js           # Welcome message
+│   ├── download.js          # YouTube audio
+│   └── mp3.js               # Video to MP3
+│
+└── events/
+└── autoreply.js         # Auto-reply triggers
+
+```
+
+---
+
+## ⚙️ Configuration
+
+### `config.json`
+
+```json
+{
+  "botName": "SALIM-CHAT-BOT",
+  "prefix": "/",
+  "ownerID": "100075452558091",
+  "adminIDs": ["100075452558091"],
+  "welcomeVideoURL": "https://example.com/welcome.mp4",
+  "helpImageURL": "https://i.imgur.com/xxxxxx.jpg"
+}
+Key Description
+botName বটের নাম (help menu-তে দেখা যাবে)
+prefix কমান্ড প্রিফিক্স (ডিফল্ট /)
+ownerID মালিকের Facebook UID
+adminIDs অ্যাডমিনদের UID অ্যারে
+welcomeVideoURL গ্রুপে ওয়েলকাম ভিডিওর লিঙ্ক (ঐচ্ছিক)
+helpImageURL help মেসেজে ছবি (ঐচ্ছিক)
