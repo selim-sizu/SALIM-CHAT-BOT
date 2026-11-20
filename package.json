@@ -1,20 +1,23 @@
 {
   "name": "salim-chat-bot",
   "version": "1.0.0",
-  "description": "Messenger group chat bot",
+  "description": "Messenger group chat bot with auto-reply, admin tools, YouTube audio, video-to-MP3 and birthday wish",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-"dependencies": {
-  "biar-fca": "3.9.5"
-  "express": "^4.19.2",
-  "ytdl-core": "^4.11.5",
-  "axios": "^1.7.2",
-  "fs-extra": "^11.2.0",
-  "ffmpeg-static": "^5.2.0"
-},
+  "dependencies": {
+    "biar-fca": "3.9.5",
+    "express": "^4.19.2",
+    "ytdl-core": "^4.11.5",
+    "axios": "^1.7.2",
+    "fs-extra": "^11.2.0",
+    "ffmpeg-static": "^5.2.0",
+    "canvas": "^2.11.2"
+  },
   "engines": {
-    "node": ">=22"
-  }
+    "node": "22.x"
+  },
+  "author": "Selim Sizu",
+  "license": "MIT"
 }
