@@ -2,6 +2,11 @@ const fs = require("fs");
 const path = require("path");
 const CONFIG_PATH = path.join(__dirname, "..", "config.json");
 
+function sendSafe(api, threadID, message) {
+  return api.sendMessageMqtt(message, threadID)
+    .catch(err => console.error("❌ admin send failed:", err.message));
+}
+
 module.exports = {
   config: {
     name: "admin",
@@ -16,7 +21,7 @@ module.exports = {
 
     const isAdmin = admins.includes(senderID) || senderID === ownerID;
     if (!isAdmin) {
-      return api.sendMessageMqtt("❌ এই কমান্ড শুধু অ্যাডমিনদের জন্য।", threadID);
+      return sendSafe(api, threadID, "❌ এই কমান্ড শুধু অ্যাডমিনদের জন্য।");
     }
 
     const sub = (args[0] || "").toLowerCase();
@@ -28,45 +33,82 @@ module.exports = {
       return null;
     }
 
+    // admin list
     if (sub === "list" || sub === "") {
       const list = admins.length
         ? admins.map((id, i) => `${i + 1}. ${id}`).join("\n")
         : "কোনো অ্যাডমিন নেই।";
-      return api.sendMessageMqtt(
-        `👑 বট অ্যাডমিন লিস্ট:\n\n${list}\n\nOwner: ${ownerID || "সেট করা নেই"}`,
-        threadID
+      return sendSafe(
+        api,
+        threadID,
+        `👑 বট অ্যাডমিন লিস্ট:\n\n${list}\n\nOwner: ${ownerID || "সেট করা নেই"}`
       );
     }
 
+    // admin add
     if (sub === "add") {
       const uid = getTargetID();
-      if (!uid) return api.sendMessageMqtt("⚠️ কাউকে mention করুন, reply দিন, অথবা UID দিন।", threadID);
-      if (admins.includes(uid)) return api.sendMessageMqtt(`ℹ️ ${uid} ইতিমধ্যে অ্যাডমিন।`, threadID);
+      if (!uid) {
+        return sendSafe(
+          api,
+          threadID,
+          "⚠️ কাউকে mention করুন, reply দিন, অথবা UID দিন।\nউদাহরণ: /admin add 1000xxxxxxxxx"
+        );
+      }
+      if (admins.includes(uid)) {
+        return sendSafe(api, threadID, `ℹ️ ${uid} ইতিমধ্যে অ্যাডমিন।`);
+      }
 
       admins.push(uid);
       config[adminKey] = admins;
-      fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-      return api.sendMessageMqtt(`✅ নতুন অ্যাডমিন যোগ হয়েছে: ${uid}`, threadID);
+      try {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+      } catch (e) {
+        console.error("❌ config save failed:", e.message);
+        return sendSafe(api, threadID, "❌ config.json সেভ করা যায়নি।");
+      }
+      return sendSafe(api, threadID, `✅ নতুন অ্যাডমিন যোগ হয়েছে: ${uid}`);
     }
 
+    // admin remove
     if (["remove", "del", "delete"].includes(sub)) {
       const uid = getTargetID();
-      if (!uid) return api.sendMessageMqtt("⚠️ কাউকে mention করুন, reply দিন, অথবা UID দিন।", threadID);
-      if (uid === ownerID) return api.sendMessageMqtt("❌ Owner-কে বাদ দেওয়া যাবে না।", threadID);
-      if (!admins.includes(uid)) return api.sendMessageMqtt(`ℹ️ ${uid} অ্যাডমিন লিস্টে নেই।`, threadID);
+      if (!uid) {
+        return sendSafe(
+          api,
+          threadID,
+          "⚠️ কাউকে mention করুন, reply দিন, অথবা UID দিন।\nউদাহরণ: /admin remove 1000xxxxxxxxx"
+        );
+      }
+      if (uid === ownerID) {
+        return sendSafe(api, threadID, "❌ Owner-কে বাদ দেওয়া যাবে না।");
+      }
+      if (!admins.includes(uid)) {
+        return sendSafe(api, threadID, `ℹ️ ${uid} অ্যাডমিন লিস্টে নেই।`);
+      }
       if (admins.length === 1 && admins[0] === uid && senderID !== ownerID) {
-        return api.sendMessageMqtt("❌ শেষ অ্যাডমিনকে বাদ দেওয়া যাবে না।", threadID);
+        return sendSafe(api, threadID, "❌ শেষ অ্যাডমিনকে বাদ দেওয়া যাবে না।");
       }
 
       admins = admins.filter(id => id !== uid);
       config[adminKey] = admins;
-      fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-      return api.sendMessageMqtt(`✅ অ্যাডমিন বাদ দেওয়া হয়েছে: ${uid}`, threadID);
+      try {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+      } catch (e) {
+        console.error("❌ config save failed:", e.message);
+        return sendSafe(api, threadID, "❌ config.json সেভ করা যায়নি।");
+      }
+      return sendSafe(api, threadID, `✅ অ্যাডমিন বাদ দেওয়া হয়েছে: ${uid}`);
     }
 
-    return api.sendMessageMqtt(
-      "📌 Admin কমান্ড:\n• admin list\n• admin add @mention / reply / UID\n• admin remove @mention / reply / UID",
-      threadID
+    // help
+    return sendSafe(
+      api,
+      threadID,
+      "📌 Admin কমান্ড:\n" +
+        "• /admin list — অ্যাডমিন লিস্ট\n" +
+        "• /admin add @mention / reply / UID\n" +
+        "• /admin remove @mention / reply / UID"
     );
   }
 };
