@@ -70,7 +70,7 @@ test('group-specific reply wins inside its group only', () => {
 test('higher priority wins when many triggers match', () => {
   manager.addReply({ trigger: 'hi', replies: ['Low'], priority: 0 });
   manager.addReply({ trigger: 'hi', replies: ['High'], matchType: 'contains', priority: 5, groupId: 'g1' });
-  manager.addReply({ trigger: 'hi', replies: ['Other'], matchType: 'contains', priority: 5 });
+  manager.addReply({ trigger: 'h', replies: ['Other'], matchType: 'contains', priority: 5 });
   assert.strictEqual(findReply({ text: 'hi', groupId: 'g1' }).reply, 'High');
 });
 
