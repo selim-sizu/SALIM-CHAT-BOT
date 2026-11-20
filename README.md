@@ -1,2 +1,38 @@
-# SALIM-CHAT-BOT
-Chat-bot
+<div align="center">
+
+<img src="https://i.imgur.com/8Km9tLL.png" width="120" alt="SALIM CHAT BOT"/>
+
+# 🤖 𝐒𝐀𝐋𝐈𝐌 𝐂𝐇𝐀𝐓 𝐁𝐎𝐓
+
+### Messenger Group Chat Bot · Powered by Node.js
+
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Render](https://img.shields.io/badge/Hosted%20on-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+[![Owner](https://img.shields.io/badge/Owner-Selim%20Sizu-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](https://facebook.com/100075452558091)
+
+**A fun, feature-rich Messenger bot with auto-reply, admin tools, YouTube audio download, video-to-MP3 converter, and a beautiful owner card.**
+
+</div>
+
+---
+
+## ✨ Features
+
+| 🎯 Feature | 📝 Description |
+|---|---|
+| 💬 **Custom Auto-Reply** | ৮০+ ট্রিগার — `hi`, `boss`, `jan`, `💋`, `salam`, `miss you` ইত্যাদি |
+| 👑 **Owner Card** | `admin` লিখলেই স্টাইলিশ OWNER DETAILS কার্ড + লাইভ সময় |
+| 🛡️ **Admin System** | অ্যাডমিন যোগ/বাদ/লিস্ট — mention, reply বা UID দিয়ে |
+| 🆔 **UID Finder** | কারো UID বের করুন mention/reply করে |
+| 🎵 **YouTube Audio** | `/download <url>` — যেকোনো YouTube ভিডিওর MP3 |
+| 🎬 **Video → MP3** | ভিডিওতে reply দিয়ে `/mp3` — সাথে সাথে অডিও |
+| 🎉 **Welcome Video** | গ্রুপে নতুন সদস্য এলে ভিডিওসহ স্বাগতম |
+| 😂 **Funny Reply** | মজার জোকস ও রিপ্লাই |
+| 📜 **Styled Help Menu** | Pagination + কমান্ড ডিটেইলস |
+| 🔄 **Auto Reconnect** | MQTT বিচ্ছিন্ন হলে স্বয়ংক্রিয় পুনঃসংযোগ |
+| 🌐 **Keep-Alive Server** | UptimeRobot দিয়ে ২৪/৭ অনলাইন |
+
+---
+
+## 📁 Project Structure
