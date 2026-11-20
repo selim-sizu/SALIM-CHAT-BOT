@@ -1,7 +1,25 @@
 {
-  "botName": "SALIM-CHAT-BOT",
-  "prefix": "/",
-  "ownerID": "100075452558091",
-  "adminIDs": ["100075452558091"],
-  "welcomeVideoURL": "https://example.com/welcome.mp4"
+  "Author": "Selim Sizu",
+  "version": "3.0.0",
+  "language": "en",
+  "adminOnly": false,
+  "autoSent": true,
+  "allowInbox": true,
+  "DeveloperMode": false,
+  "autoClean": true,
+  "notiGroup": true,
+  "NOTIFICATION": true,
+  "BOTNAME": "𓆩🖤𓆪 𝐃𝐞𝐞𝐩𝐚 𝐂𝐡𝐚𝐭 𝐁𝐨𝐭 ⋆.˚🦋🍷🥂",
+  "PREFIX": "/",
+  "usePrefix": false,
+  "ADMINBOT": [
+    "100075452558091",
+    "100044713412032"
+  ],
+  "OWNERID": "100075452558091",
+  "OWNERNAME": "Selim Sizu",
+  "APPSTATEPATH": "appstate.json",
+  "welcomeVideoURL": "",
+  "leaveVideoURL": "",
+  "helpImageURL": ""
 }
