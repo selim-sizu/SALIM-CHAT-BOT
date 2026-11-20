@@ -12,6 +12,7 @@ module.exports = {
       "😂 মা: পরীক্ষায় কী লিখলি? ছেলে: স্যার যা বলেছিলেন, তাই লিখেছি—'আমি জানি না'!"
     ];
     const random = jokes[Math.floor(Math.random() * jokes.length)];
-    api.sendMessageMqtt(random, event.threadID);
+    api.sendMessageMqtt(random, event.threadID)
+  .catch(err => console.error("❌ send failed:", err.message));
   }
 };
