@@ -32,20 +32,22 @@ function showHackerStyleName() {
 // কনফিগ এবং অ্যাপস্টেট লোড
 const rawConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
 
-// কনফিগ ম্যাপিং (যাতে আপনার পুরনো ও নতুন ফরম্যাট দুটোই কাজ করে)
+// কনফিগ ম্যাপিং
 const config = {
   botName: rawConfig.botName || rawConfig.BOTNAME || "SALIM-CHAT-BOT",
   prefix: rawConfig.prefix || rawConfig.PREFIX || "/",
   ownerID: rawConfig.ownerID || rawConfig.OWNERID || (rawConfig.ADMINBOT && rawConfig.ADMINBOT[0]) || "",
   ownerName: rawConfig.ownerName || rawConfig.OWNERNAME || "Selim Sizu",
   adminIDs: rawConfig.adminIDs || rawConfig.ADMINBOT || [],
-  adminOnly: rawConfig.adminOnly || false, // 🌟 Admin Only Mode
+  adminOnly: rawConfig.adminOnly || false,
+  azanGroupID: rawConfig.azanGroupID || "",
+  azanVideoURL: rawConfig.azanVideoURL || "",
   welcomeVideoURL: rawConfig.welcomeVideoURL || "",
   leaveVideoURL: rawConfig.leaveVideoURL || "",
   helpImageURL: rawConfig.helpImageURL || ""
 };
 
-// অ্যাপস্টেট লোড (Render Secret File বা লোকাল ফাইল)
+// অ্যাপস্টেট লোড
 const appStatePath = fs.existsSync("/etc/secrets/appstate.json") 
   ? "/etc/secrets/appstate.json" 
   : path.join(__dirname, "appstate.json");
@@ -94,7 +96,7 @@ keepAlive();
 // ==========================================
 // 🚀 বট লগইন এবং লিসেনার
 // ==========================================
-showHackerStyleName(); // হ্যাকার স্টাইল নেম প্রিন্ট
+showHackerStyleName();
 
 login({ appState }, { 
   listenEvents: true, 
@@ -107,13 +109,23 @@ login({ appState }, {
 
   console.log("🤖 বট অনলাইন! আইডি:", api.getCurrentUserID());
 
+  // 🕌 Azan Cronjob চালু করা
+  setTimeout(() => {
+    const azanEvent = events.find(ev => ev.config.name === "azan");
+    if (azanEvent) {
+      try {
+        azanEvent.run({ api, config, threadID: config.azanGroupID });
+      } catch (e) {
+        console.error("❌ Azan start error:", e.message);
+      }
+    }
+  }, 5000); // বট অনলাইন হওয়ার ৫ সেকেন্ড পর চালু হবে
+
   api.listenMqtt(async (err, event) => {
     try {
       if (err) return console.error("⚠️ MQTT error:", err?.message || err);
 
-      // ==========================================
       // 🌟 Auto Seen Logic
-      // ==========================================
       try {
         const seenPath = path.join(__dirname, "cache", "autoseen.txt");
         if (fs.existsSync(seenPath) && fs.readFileSync(seenPath, "utf8").trim() === "true") {
@@ -121,7 +133,7 @@ login({ appState }, {
         }
       } catch (e) {}
 
-      // 🎯 ইভেন্ট হ্যান্ডলার (Join, Leave, Nickname change ইত্যাদি)
+      // 🎯 ইভেন্ট হ্যান্ডলার
       if (event && event.type === "event") {
         for (const ev of events) {
           if (ev.config.eventType === "event") {
@@ -132,13 +144,13 @@ login({ appState }, {
             }
           }
         }
-        return; // ইভেন্ট হলে নিচের মেসেজ হ্যান্ডলার স্কিপ করবে
+        return;
       }
 
       // 🎯 মেসেজ হ্যান্ডলার
       if (event && event.type === "message" && event.body) {
         
-        // ১. কাস্টম অটো-রিপ্লাই (ইভেন্ট ফাইল থেকে)
+        // ১. কাস্টম অটো-রিপ্লাই
         for (const ev of events) {
           if (ev.config.eventType === "message") {
             try {
@@ -158,27 +170,19 @@ login({ appState }, {
         const cmd = commands.get(commandName);
 
         if (cmd) {
-          // 🌟 Admin Only Mode চেক
+          // Admin Only Mode চেক
           if (config.adminOnly === true && commandName !== "onlyadmin") {
             const admins = config.adminIDs || [];
             const isBotAdmin = admins.includes(event.senderID) || event.senderID === config.ownerID;
-            
-            if (!isBotAdmin) {
-              // সাধারণ সদস্য হলে বট কিছু বলবে না
-              return; 
-            }
+            if (!isBotAdmin) return; 
           }
           
           try {
             await cmd.run({ api, event, args, config, commands });
           } catch (e) {
             console.error(`কমান্ড ${commandName} এ ত্রুটি:`, e?.message || e);
-            
-            // এরর মেসেজ পাঠানো (সেফভাবে)
-            api.sendMessageMqtt(
-              `❌ কমান্ড চালাতে সমস্যা হয়েছে: ${e.message}`,
-              event.threadID
-            ).catch(err => console.error("❌ send failed:", err.message));
+            api.sendMessageMqtt(`❌ কমান্ড চালাতে সমস্যা হয়েছে: ${e.message}`, event.threadID)
+              .catch(err => console.error("❌ send failed:", err.message));
           }
         }
       }
