@@ -6,7 +6,7 @@ function sendSafe(api, threadID, payload, messageID) {
     .catch(err => console.error("❌ welcome send failed:", err.message));
 }
 
-// 🎲 র‍্যান্ডম জিফ সিলেক্ট করার ফাংশন
+// 🎲 ফোল্ডার থেকে র‍্যান্ডম জিফ নেওয়ার ফাংশন
 function getRandomGif(folderName) {
   const dir = path.join(__dirname, folderName);
   if (!fs.existsSync(dir)) return null;
@@ -25,6 +25,7 @@ module.exports = {
   },
 
   run: async ({ api, event, config }) => {
+    // শুধু নতুন সদস্য যোগ দিলে কাজ করবে
     if (event.logMessageType !== "log:subscribe") return;
 
     const threadID = event.threadID;
@@ -35,35 +36,30 @@ module.exports = {
     const prefix = config?.prefix || "/";
 
     for (const user of added) {
-      if (user.userFbId === api.getCurrentUserID()) continue; // বট নিজে হলে বাদ
+      // বট নিজে গ্রুপে যোগ দিলে ওয়েলকাম বাদ
+      if (user.userFbId === api.getCurrentUserID()) continue;
+      
       const name = user.fullName || "নতুন সদস্য";
 
-      // ১) টেক্সট মেসেজ
-      await sendSafe(
-        api,
-        threadID,
-        `🎉 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 🎉\n\n👤 ${name}\n\n` +
-        `আমাদের গ্রুপে আপনাকে আন্তরিক স্বাগতম! 🌸\n` +
-        `নিয়ম জানতে লিখুন: ${prefix}rules\n\n🤖 ${botName}`
-      );
+      // 📝 মেসেজ টেক্সট তৈরি
+      const bodyText = `🎉 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 🎉\n\n👤 ${name}\n\nআমাদের গ্রুপে আপনাকে আন্তরিক স্বাগতম! 🌸\nনিয়ম জানতে লিখুন: ${prefix}rules\n\n🤖 ${botName}`;
 
-      // ২) র‍্যান্ডম জিফ (মেসেজের নিচে)
-      const gifPath = getRandomGif("welcome"); // welcome ফোল্ডার থেকে নেবে
-      
+      // 🎬 র‍্যান্ডম জিফ খোঁজা
+      const gifPath = getRandomGif("welcome");
+
       if (gifPath) {
-        setTimeout(async () => {
-          try {
-            await api.sendMessageMqtt(
-              {
-                body: "🎬",
-                attachment: fs.createReadStream(gifPath)
-              },
-              threadID
-            ).catch(err => console.error("❌ gif send failed:", err.message));
-          } catch (e) {
-            console.error("❌ gif read error:", e.message);
+        // 🌟 টেক্সট এবং জিফ একসাথে পাঠানো (এক বাবলে)
+        await sendSafe(
+          api,
+          threadID,
+          {
+            body: bodyText,
+            attachment: fs.createReadStream(gifPath)
           }
-        }, 1500); // ১.৫ সেকেন্ড পর জিফ যাবে
+        );
+      } else {
+        // জিফ না পেলে শুধু টেক্সট পাঠাবে
+        await sendSafe(api, threadID, bodyText);
       }
     }
   }
