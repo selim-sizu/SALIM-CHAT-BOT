@@ -39,6 +39,7 @@ const config = {
   ownerID: rawConfig.ownerID || rawConfig.OWNERID || (rawConfig.ADMINBOT && rawConfig.ADMINBOT[0]) || "",
   ownerName: rawConfig.ownerName || rawConfig.OWNERNAME || "Selim Sizu",
   adminIDs: rawConfig.adminIDs || rawConfig.ADMINBOT || [],
+  adminOnly: rawConfig.adminOnly || false, // 🌟 Admin Only Mode
   welcomeVideoURL: rawConfig.welcomeVideoURL || "",
   leaveVideoURL: rawConfig.leaveVideoURL || "",
   helpImageURL: rawConfig.helpImageURL || ""
@@ -99,8 +100,8 @@ login({ appState }, {
   listenEvents: true, 
   autoReconnect: true, 
   online: true,
-  autoMarkDelivery: false, // ফেসবুক ব্লক এড়াতে false
-  autoMarkRead: false      // ফেসবুক ব্লক এড়াতে false
+  autoMarkDelivery: false, 
+  autoMarkRead: false      
 }, (err, api) => {
   if (err) return console.error("❌ লগইন ব্যর্থ:", err);
 
@@ -109,6 +110,16 @@ login({ appState }, {
   api.listenMqtt(async (err, event) => {
     try {
       if (err) return console.error("⚠️ MQTT error:", err?.message || err);
+
+      // ==========================================
+      // 🌟 Auto Seen Logic
+      // ==========================================
+      try {
+        const seenPath = path.join(__dirname, "cache", "autoseen.txt");
+        if (fs.existsSync(seenPath) && fs.readFileSync(seenPath, "utf8").trim() === "true") {
+          api.markAsRead(event.threadID, () => {});
+        }
+      } catch (e) {}
 
       // 🎯 ইভেন্ট হ্যান্ডলার (Join, Leave, Nickname change ইত্যাদি)
       if (event && event.type === "event") {
@@ -147,6 +158,17 @@ login({ appState }, {
         const cmd = commands.get(commandName);
 
         if (cmd) {
+          // 🌟 Admin Only Mode চেক
+          if (config.adminOnly === true && commandName !== "onlyadmin") {
+            const admins = config.adminIDs || [];
+            const isBotAdmin = admins.includes(event.senderID) || event.senderID === config.ownerID;
+            
+            if (!isBotAdmin) {
+              // সাধারণ সদস্য হলে বট কিছু বলবে না
+              return; 
+            }
+          }
+          
           try {
             await cmd.run({ api, event, args, config, commands });
           } catch (e) {
