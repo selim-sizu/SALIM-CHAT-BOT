@@ -1,3 +1,25 @@
 node_modules/
+nodemodules/
+
 appstate.json
+appstate*.json
+appstate*.json.*
+appstate.json.bak
+appstate.json.tmp
+*.appstate.json
+
+# config.json
+
 .env
+.env.*
+
+cache/
+temp/
+*.log
+npm-debug.log*
+.bot.pid
+
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
