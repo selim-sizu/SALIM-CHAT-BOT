@@ -1,0 +1,31 @@
+name: Bot Auto-Run
+
+on:
+  workflow_dispatch: # ম্যানুয়ালি চালু করার জন্য
+  schedule:
+    - cron: '0 */6 * * *' # প্রতি ৬ ঘণ্টায় একবার অটো রিস্টার্ট হবে
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350 # সর্বোচ্চ ৫ ঘণ্টা ৫০ মিনিট চলবে (GitHub এর লিমিট ৬ ঘণ্টা)
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Create Appstate from Secret
+        run: echo "${{ secrets.APPSTATE }}" > appstate.json
+
+      - name: Run Bot
+        run: npm start
+        env:
+          NODE_OPTIONS: "--max-old-space-size=512"
