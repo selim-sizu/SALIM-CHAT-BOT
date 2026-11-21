@@ -8,7 +8,6 @@ function sendSafe(api, threadID, payload) {
     .catch(err => console.error("❌ azan send failed:", err.message));
 }
 
-// 🖼️ ভিডিও ডাউনলোড করার ফাংশন
 async function downloadVideo(url) {
   try {
     if (!url) return null;
@@ -33,19 +32,14 @@ async function downloadVideo(url) {
 
 module.exports = {
   config: {
-    eventType: "system_startup", // এটি বট চালু হওয়ার সাথে সাথে একবার রান করবে
+    eventType: "system_startup",
     name: "azan"
   },
 
   run: async ({ api, config, threadID }) => {
-    // গ্রুপ আইডি config থেকে নেবে, অথবা নির্দিষ্ট গ্রুপ আইডি বসাতে হবে
     const targetGroupID = config.azanGroupID || threadID; 
-    if (!targetGroupID) {
-      console.log("⚠️ Azan: কোনো গ্রুপ আইডি পাওয়া যায়নি।");
-      return;
-    }
+    if (!targetGroupID) return;
 
-    // 🕌 আজানের সময়সূচি (বাংলাদেশ সময়)
     const azanSchedule = [
       { name: "ফজর", time: "05:00" },
       { name: "যোহর", time: "12:30" },
@@ -56,35 +50,27 @@ module.exports = {
 
     azanSchedule.forEach(azan => {
       const [hour, minute] = azan.time.split(" ");
-      const cronTime = `${minute} ${hour} * * *`; // প্রতি দিন এই সময়ে চলবে
+      const cronTime = `${minute} ${hour} * * *`;
 
       cron.schedule(cronTime, async () => {
         console.log(`🕌 Azan Time: ${azan.name}`);
-
-        const message = `🕌 𝗔𝗭𝗔𝗡 𝗧𝗜𝗠𝗘 🕌\n\n⏰ নামাজের সময় হয়েছে: ${azan.name}\n\n🕋 আসুন আমরা সবাই নামাজে দাঁড়াই।\n\n🤲 আল্লাহ আমাদের নামাজ কবুল করুন।`;
+        const message = `🕌 𝗔𝗭𝗔𝗡 𝗧𝗜𝗠𝗘 🕌\n\n⏰ নামাজের সময় হয়েছে: ${azan.name}\n\n🕋 আসুন আমরা সবাই নামাজে দাঁড়াই।\n\n🤲 আল্লাহ আমাদের নামাজ কবুল করুন।`;
 
         await sendSafe(api, targetGroupID, message);
 
-        // ভিডিও থাকলে পাঠানো
         const videoURL = config.azanVideoURL;
         if (videoURL) {
           setTimeout(async () => {
             const filePath = await downloadVideo(videoURL);
             if (filePath) {
-              await api.sendMessageMqtt(
-                { attachment: fs.createReadStream(filePath) },
-                targetGroupID
-              ).catch(err => console.error("❌ Azan video send failed:", err.message));
+              await api.sendMessageMqtt({ attachment: fs.createReadStream(filePath) }, targetGroupID)
+                .catch(err => console.error("❌ Azan video send failed:", err.message));
               setTimeout(() => fs.remove(filePath).catch(() => {}), 30000);
             }
           }, 2000);
         }
-      }, {
-        scheduled: true,
-        timezone: "Asia/Dhaka" // 🌟 বাংলাদেশ সময়
-      });
+      }, { scheduled: true, timezone: "Asia/Dhaka" });
     });
-
-    console.log("✅ Azan Cronjob চালু হয়েছে (Asia/Dhaka timezone)");
+    console.log("✅ Azan Cronjob চালু হয়েছে (Asia/Dhaka timezone)");
   }
 };
