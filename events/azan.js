@@ -8,6 +8,7 @@ function sendSafe(api, threadID, payload) {
     .catch(err => console.error("❌ azan send failed:", err.message));
 }
 
+// 🖼️ ভিডিও ডাউনলোড করার ফাংশন
 async function downloadVideo(url) {
   try {
     if (!url) return null;
@@ -54,21 +55,33 @@ module.exports = {
 
       cron.schedule(cronTime, async () => {
         console.log(`🕌 Azan Time: ${azan.name}`);
-        const message = `🕌 𝗔𝗭𝗔𝗡 𝗧𝗜𝗠𝗘 🕌\n\n⏰ নামাজের সময় হয়েছে: ${azan.name}\n\n🕋 আসুন আমরা সবাই নামাজে দাঁড়াই।\n\n🤲 আল্লাহ আমাদের নামাজ কবুল করুন।`;
 
-        await sendSafe(api, targetGroupID, message);
+        // 📝 আজানের স্টাইল করা মেসেজ
+        const message = `🕌 𝗔𝗭𝗔𝗡 𝗧𝗜𝗠𝗘 🕌\n\n⏰ এখন ${azan.name} এর আজানের সময়।\n\n🚫 এখন গ্রুপে কেউ মেসেজ করবেন না।\n\n🕋 আসুন আমরা সবাই নামাজে দাঁড়াই এবং আল্লাহর ইবাদত করি।\n\n🤲 আল্লাহ আমাদের নামাজ কবুল করুন।`;
 
-        const videoURL = config.azanVideoURL;
+        const videoURL = config.azanVideoURL; // 🌟 কনফিগ থেকে ভিডিও লিঙ্ক নেবে
+
         if (videoURL) {
-          setTimeout(async () => {
-            const filePath = await downloadVideo(videoURL);
-            if (filePath) {
-              await api.sendMessageMqtt({ attachment: fs.createReadStream(filePath) }, targetGroupID)
-                .catch(err => console.error("❌ Azan video send failed:", err.message));
-              setTimeout(() => fs.remove(filePath).catch(() => {}), 30000);
-            }
-          }, 2000);
+          // 🌟 ভিডিও ডাউনলোড করে মেসেজের সাথে একই ফ্রেমে পাঠানো
+          const filePath = await downloadVideo(videoURL);
+          
+          if (filePath) {
+            await sendSafe(api, targetGroupID, {
+              body: message,
+              attachment: fs.createReadStream(filePath)
+            });
+            
+            // ফাইল ডিলিট করা
+            setTimeout(() => fs.remove(filePath).catch(() => {}), 30000);
+          } else {
+            // ভিডিও ডাউনলোড না হলে শুধু টেক্সট যাবে
+            await sendSafe(api, targetGroupID, message);
+          }
+        } else {
+          // ভিডিও লিঙ্ক না থাকলে শুধু টেক্সট যাবে
+          await sendSafe(api, targetGroupID, message);
         }
+
       }, { scheduled: true, timezone: "Asia/Dhaka" });
     });
     console.log("✅ Azan Cronjob চালু হয়েছে (Asia/Dhaka timezone)");
