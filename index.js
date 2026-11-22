@@ -6,7 +6,7 @@ process.on("uncaughtException", (err) => {
   console.error("⚠️ Uncaught Exception:", err?.message || err);
 });
 
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
 const { login } = require("biar-fca");
 const keepAlive = require("./utils/keep_alive");
