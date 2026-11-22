@@ -41,49 +41,73 @@ module.exports = {
     const targetGroupID = config.azanGroupID || threadID; 
     if (!targetGroupID) return;
 
-    const azanSchedule = [
-      { name: "ফজর", time: "05:00" },
-      { name: "যোহর", time: "12:30" },
-      { name: "আসর", time: "16:00" },
-      { name: "মাগরিব", time: "18:00" },
-      { name: "এশা", time: "19:30" }
-    ];
+    try {
+      // 🌟 API থেকে আজকের নামাজের সময় আনা হচ্ছে (মেহেরপুর, বাংলাদেশ)
+      const res = await axios.get("https://api.aladhan.com/v1/timingsByCity?city=Meherpur&country=Bangladesh&method=1");
+      const timings = res.data.data.timings;
 
-    azanSchedule.forEach(azan => {
-      const [hour, minute] = azan.time.split(" ");
-      const cronTime = `${minute} ${hour} * * *`;
+      // API থেকে আসা সময় (যেমন "05:00 (BST)") পরিষ্কার করা হচ্ছে
+      const cleanTime = (timeStr) => timeStr.split(" ")[0]; 
 
-      cron.schedule(cronTime, async () => {
-        console.log(`🕌 Azan Time: ${azan.name}`);
+      const azanSchedule = [
+        { name: "ফজর", time: cleanTime(timings.Fajr) },
+        { name: "যোহর", time: cleanTime(timings.Dhuhr) },
+        { name: "আসর", time: cleanTime(timings.Asr) },
+        { name: "মাগরিব", time: cleanTime(timings.Maghrib) },
+        { name: "এশা", time: cleanTime(timings.Isha) }
+      ];
 
-        // 📝 আজানের স্টাইল করা মেসেজ
-        const message = `🕌 𝗔𝗭𝗔𝗡 𝗧𝗜𝗠𝗘 🕌\n\n⏰ এখন ${azan.name} এর আজানের সময়।\n\n🚫 এখন গ্রুপে কেউ মেসেজ করবেন না।\n\n🕋 আসুন আমরা সবাই নামাজে দাঁড়াই এবং আল্লাহর ইবাদত করি।\n\n🤲 আল্লাহ আমাদের নামাজ কবুল করুন।`;
+      azanSchedule.forEach(azan => {
+        const [hour, minute] = azan.time.split(":");
+        const cronTime = `${minute} ${hour} * * *`;
 
-        const videoURL = config.azanVideoURL; // 🌟 কনফিগ থেকে ভিডিও লিঙ্ক নেবে
+        console.log(`⏰ আজান শিডিউল: ${azan.name} - ${azan.time}`);
 
-        if (videoURL) {
-          // 🌟 ভিডিও ডাউনলোড করে মেসেজের সাথে একই ফ্রেমে পাঠানো
-          const filePath = await downloadVideo(videoURL);
+        cron.schedule(cronTime, async () => {
+          console.log(`🕌 Azan Time: ${azan.name}`);
           
-          if (filePath) {
-            await sendSafe(api, targetGroupID, {
-              body: message,
-              attachment: fs.createReadStream(filePath)
-            });
-            
-            // ফাইল ডিলিট করা
-            setTimeout(() => fs.remove(filePath).catch(() => {}), 30000);
+          const message = `🕌 𝗔𝗭𝗔𝗡 𝗧𝗜𝗠𝗘 🕌\n\n⏰ এখন ${azan.name} এর আজানের সময়।\n\n🚫 এখন গ্রুপে কেউ মেসেজ করবেন না।\n\n🕋 আসুন আমরা সবাই নামাজে দাঁড়াই।\n\n🤲 আল্লাহ আমাদের নামাজ কবুল করুন।`;
+
+          const videoURL = config.azanVideoURL;
+          if (videoURL) {
+            const filePath = await downloadVideo(videoURL);
+            if (filePath) {
+              await sendSafe(api, targetGroupID, {
+                body: message,
+                attachment: fs.createReadStream(filePath)
+              });
+              setTimeout(() => fs.remove(filePath).catch(() => {}), 30000);
+            } else {
+              await sendSafe(api, targetGroupID, message);
+            }
           } else {
-            // ভিডিও ডাউনলোড না হলে শুধু টেক্সট যাবে
             await sendSafe(api, targetGroupID, message);
           }
-        } else {
-          // ভিডিও লিঙ্ক না থাকলে শুধু টেক্সট যাবে
-          await sendSafe(api, targetGroupID, message);
-        }
 
-      }, { scheduled: true, timezone: "Asia/Dhaka" });
-    });
-    console.log("✅ Azan Cronjob চালু হয়েছে (Asia/Dhaka timezone)");
+        }, { scheduled: true, timezone: "Asia/Dhaka" });
+      });
+
+      console.log("✅ আজকের আজানের সময় API থেকে লোড হয়েছে এবং ক্রনজব চালু হয়েছে।");
+
+    } catch (error) {
+      console.error("❌ আজানের API থেকে সময় আনতে সমস্যা হয়েছে:", error.message);
+      
+      // API ফেইল করলে ব্যাকআপ হিসেবে ম্যানুয়াল সময়
+      const fallbackSchedule = [
+        { name: "ফজর", time: "05:00" },
+        { name: "যোহর", time: "12:30" },
+        { name: "আসর", time: "16:00" },
+        { name: "মাগরিব", time: "18:00" },
+        { name: "এশা", time: "19:30" }
+      ];
+
+      fallbackSchedule.forEach(azan => {
+        const [hour, minute] = azan.time.split(":");
+        const cronTime = `${minute} ${hour} * * *`;
+        cron.schedule(cronTime, async () => {
+          await sendSafe(api, targetGroupID, `🕌 আজানের সময় হয়েছে: ${azan.name}`);
+        }, { scheduled: true, timezone: "Asia/Dhaka" });
+      });
+    }
   }
 };
