@@ -32,7 +32,7 @@ function showHackerStyleName() {
 // কনফিগ এবং অ্যাপস্টেট লোড
 const rawConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
 
-// কনফিগ ম্যাপিং
+// কনফিগ ম্যাপিং (ছোট ও বড় হাতের অক্ষর দুটোই সাপোর্ট করবে)
 const config = {
   botName: rawConfig.botName || rawConfig.BOTNAME || "SALIM-CHAT-BOT",
   prefix: rawConfig.prefix || rawConfig.PREFIX || "/",
@@ -42,6 +42,8 @@ const config = {
   adminOnly: rawConfig.adminOnly || false,
   azanGroupID: rawConfig.azanGroupID || "",
   azanVideoURL: rawConfig.azanVideoURL || "",
+  gmGroupID: rawConfig.gmGroupID || rawConfig.azanGroupID || "",
+  midnightGroupID: rawConfig.midnightGroupID || rawConfig.azanGroupID || "",
   welcomeVideoURL: rawConfig.welcomeVideoURL || "",
   leaveVideoURL: rawConfig.leaveVideoURL || "",
   helpImageURL: rawConfig.helpImageURL || ""
@@ -109,17 +111,30 @@ login({ appState }, {
 
   console.log("🤖 বট অনলাইন! আইডি:", api.getCurrentUserID());
 
-  // 🕌 Azan Cronjob চালু করা
+  // ==========================================
+  // ⏰ সব ক্রনজব (Cronjobs) একসাথে চালু করা
+  // ==========================================
   setTimeout(() => {
+    // ১. আজান
     const azanEvent = events.find(ev => ev.config.name === "azan");
     if (azanEvent) {
-      try {
-        azanEvent.run({ api, config, threadID: config.azanGroupID });
-      } catch (e) {
-        console.error("❌ Azan start error:", e.message);
-      }
+      try { azanEvent.run({ api, config, threadID: config.azanGroupID }); } catch (e) {}
     }
-  }, 5000); // বট অনলাইন হওয়ার ৫ সেকেন্ড পর চালু হবে
+
+    // ২. গুড মর্নিং
+    const gmEvent = events.find(ev => ev.config.name === "goodmorning");
+    if (gmEvent) {
+      try { gmEvent.run({ api, config, threadID: config.gmGroupID }); } catch (e) {}
+    }
+
+    // ৩. মিডনাইট
+    const midnightEvent = events.find(ev => ev.config.name === "midnight");
+    if (midnightEvent) {
+      try { midnightEvent.run({ api, config, threadID: config.midnightGroupID }); } catch (e) {}
+    }
+    
+    console.log("✅ সব Cronjobs (Azan, GM, Midnight) চালু হয়েছে");
+  }, 5000); // বট লগইন হওয়ার ৫ সেকেন্ড পর সব টাইমার চালু হবে
 
   api.listenMqtt(async (err, event) => {
     try {
@@ -133,7 +148,7 @@ login({ appState }, {
         }
       } catch (e) {}
 
-      // 🎯 ইভেন্ট হ্যান্ডলার
+      // 🎯 ইভেন্ট হ্যান্ডলার (Join, Leave, Group Update)
       if (event && event.type === "event") {
         for (const ev of events) {
           if (ev.config.eventType === "event") {
@@ -150,7 +165,7 @@ login({ appState }, {
       // 🎯 মেসেজ হ্যান্ডলার
       if (event && event.type === "message" && event.body) {
         
-        // ১. কাস্টম অটো-রিপ্লাই
+        // ১. কাস্টম অটো-রিপ্লাই, অটো-নিকনেম, ভয়েস ইত্যাদি
         for (const ev of events) {
           if (ev.config.eventType === "message") {
             try {
