@@ -29,10 +29,17 @@ function showHackerStyleName() {
   console.log(style);
 }
 
-// কনফিগ এবং অ্যাপস্টেট লোড
-const rawConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
+// ==========================================
+// ⚙️ কনফিগ লোড (Safe)
+// ==========================================
+let rawConfig = {};
+try {
+  rawConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
+} catch (e) {
+  console.error("❌ config.json পড়তে সমস্যা হয়েছে:", e.message);
+  process.exit(1);
+}
 
-// কনফিগ ম্যাপিং (ছোট ও বড় হাতের অক্ষর দুটোই সাপোর্ট করবে)
 const config = {
   botName: rawConfig.botName || rawConfig.BOTNAME || "SALIM-CHAT-BOT",
   prefix: rawConfig.prefix || rawConfig.PREFIX || "/",
@@ -49,15 +56,26 @@ const config = {
   helpImageURL: rawConfig.helpImageURL || ""
 };
 
-// অ্যাপস্টেট লোড
+// ==========================================
+// 🔐 অ্যাপস্টেট লোড (Safe)
+// ==========================================
 const appStatePath = fs.existsSync("/etc/secrets/appstate.json") 
   ? "/etc/secrets/appstate.json" 
   : path.join(__dirname, "appstate.json");
-  
-const appState = JSON.parse(fs.readFileSync(appStatePath, "utf8"));
+
+let appState = [];
+try {
+  appState = JSON.parse(fs.readFileSync(appStatePath, "utf8"));
+  if (!Array.isArray(appState) || appState.length === 0) {
+    throw new Error("appstate.json খালি বা ভুল ফরম্যাটে আছে!");
+  }
+} catch (e) {
+  console.error("❌ appstate.json পড়তে সমস্যা হয়েছে:", e.message);
+  process.exit(1);
+}
 
 // ==========================================
-// 📦 কমান্ড লোডার
+// 📦 কমান্ড ও ইভেন্ট লোডার
 // ==========================================
 const commands = new Map();
 const commandFiles = fs.readdirSync(path.join(__dirname, "commands")).filter(f => f.endsWith(".js"));
@@ -76,9 +94,6 @@ for (const file of commandFiles) {
 }
 console.log(`✅ ${commands.size} টি কমান্ড লোড হয়েছে`);
 
-// ==========================================
-// 📦 ইভেন্ট লোডার
-// ==========================================
 const events = [];
 const eventFiles = fs.readdirSync(path.join(__dirname, "events")).filter(f => f.endsWith(".js"));
 for (const file of eventFiles) {
@@ -92,135 +107,141 @@ for (const file of eventFiles) {
   }
 }
 
-// 🌐 Keep-alive সার্ভার চালু (Render + UptimeRobot)
+// 🌐 Keep-alive সার্ভার চালু
 keepAlive();
 
 // ==========================================
-// 🚀 বট লগইন এবং লিসেনার
+// 🚀 বট লগইন এবং অটো-রিট্রাই সিস্টেম
 // ==========================================
 showHackerStyleName();
 
-login({ appState }, { 
-  listenEvents: true, 
-  autoReconnect: true, 
-  online: true,
-  autoMarkDelivery: false, 
-  autoMarkRead: false      
-}, (err, api) => {
-  if (err) return console.error("❌ লগইন ব্যর্থ:", err);
+function startBot() {
+  login({ appState }, { 
+    listenEvents: true, 
+    autoReconnect: true, 
+    online: true,
+    autoMarkDelivery: false, 
+    autoMarkRead: false      
+  }, (err, api) => {
+    if (err) {
+      console.error("❌ লগইন ব্যর্থ:", err?.message || err);
+      console.log("⏳ ১ মিনিট পর আবার লগইন চেষ্টা করা হচ্ছে...");
+      return setTimeout(startBot, 60000); // ১ মিনিট পর আবার ট্রাই করবে
+    }
 
-  console.log("🤖 বট অনলাইন! আইডি:", api.getCurrentUserID());
+    console.log("🤖 বট অনলাইন! আইডি:", api.getCurrentUserID());
 
-  // ==========================================
-  // 🌟 বটের পাঠানো মেসেজ সেভ করার লজিক
-  // ==========================================
-  const BOT_MSG_PATH = path.join(__dirname, "cache", "bot_messages.json");
-  const originalSend = api.sendMessageMqtt;
-  
-  api.sendMessageMqtt = async function(payload, threadID, messageID) {
-    const res = await originalSend.apply(this, arguments);
-    try {
-      const msgID = res?.messageID || res?.messageId || (typeof res === 'string' ? res : null);
-      const bodyText = typeof payload === "string" ? payload : payload?.body;
-      
-      if (msgID && bodyText) {
-        fs.ensureDirSync(path.dirname(BOT_MSG_PATH));
-        let db = {};
-        if (fs.existsSync(BOT_MSG_PATH)) db = JSON.parse(fs.readFileSync(BOT_MSG_PATH, "utf8"));
-        
-        db[msgID] = bodyText;
-        const keys = Object.keys(db);
-        if (keys.length > 200) delete db[keys[0]]; // মেমোরি ক্লিন
-        
-        fs.writeFileSync(BOT_MSG_PATH, JSON.stringify(db, null, 2));
-      }
-    } catch (e) {}
-    return res;
-  };
-
-  // ==========================================
-  // ⏰ সব ক্রনজব (Cronjobs) একসাথে চালু করা
-  // ==========================================
-  setTimeout(() => {
-    const azanEvent = events.find(ev => ev.config.name === "azan");
-    if (azanEvent) { try { azanEvent.run({ api, config, threadID: config.azanGroupID }); } catch (e) {} }
-
-    const gmEvent = events.find(ev => ev.config.name === "goodmorning");
-    if (gmEvent) { try { gmEvent.run({ api, config, threadID: config.gmGroupID }); } catch (e) {} }
-
-    const midnightEvent = events.find(ev => ev.config.name === "midnight");
-    if (midnightEvent) { try { midnightEvent.run({ api, config, threadID: config.midnightGroupID }); } catch (e) {} }
+    // 🌟 বটের পাঠানো মেসেজ সেভ করার লজিক
+    const BOT_MSG_PATH = path.join(__dirname, "cache", "bot_messages.json");
+    const originalSend = api.sendMessageMqtt;
     
-    console.log("✅ সব Cronjobs (Azan, GM, Midnight) চালু হয়েছে");
-  }, 5000);
-
-  api.listenMqtt(async (err, event) => {
-    try {
-      if (err) return console.error("⚠️ MQTT error:", err?.message || err);
-
-      // 🌟 Auto Seen Logic
+    api.sendMessageMqtt = async function(payload, threadID, messageID) {
+      const res = await originalSend.apply(this, arguments);
       try {
-        const seenPath = path.join(__dirname, "cache", "autoseen.txt");
-        if (fs.existsSync(seenPath) && fs.readFileSync(seenPath, "utf8").trim() === "true") {
-          api.markAsRead(event.threadID, () => {});
+        const msgID = res?.messageID || res?.messageId || (typeof res === 'string' ? res : null);
+        const bodyText = typeof payload === "string" ? payload : payload?.body;
+        
+        if (msgID && bodyText) {
+          fs.ensureDirSync(path.dirname(BOT_MSG_PATH));
+          let db = {};
+          if (fs.existsSync(BOT_MSG_PATH)) db = JSON.parse(fs.readFileSync(BOT_MSG_PATH, "utf8"));
+          
+          db[msgID] = bodyText;
+          const keys = Object.keys(db);
+          if (keys.length > 200) delete db[keys[0]];
+          
+          fs.writeFileSync(BOT_MSG_PATH, JSON.stringify(db, null, 2));
         }
       } catch (e) {}
+      return res;
+    };
 
-      // 🎯 ইভেন্ট হ্যান্ডলার
-      if (event && event.type === "event") {
-        for (const ev of events) {
-          if (ev.config.eventType === "event") {
-            try {
-              await ev.run({ api, event, config });
-            } catch (e) {
-              console.error(`⚠️ ইভেন্ট এরর (${ev.config.name}):`, e?.message || e);
-            }
-          }
-        }
-        return;
-      }
+    // ⏰ ক্রনজব চালু
+    setTimeout(() => {
+      if (config.azanGroupID && config.azanGroupID !== "আপনার_গ্রুপের_আইডি_এখানে_দিন") {
+        const azanEvent = events.find(ev => ev.config.name === "azan");
+        if (azanEvent) { try { azanEvent.run({ api, config, threadID: config.azanGroupID }); } catch (e) {} }
 
-      // 🎯 মেসেজ হ্যান্ডলার
-      if (event && event.type === "message" && event.body) {
+        const gmEvent = events.find(ev => ev.config.name === "goodmorning");
+        if (gmEvent) { try { gmEvent.run({ api, config, threadID: config.gmGroupID }); } catch (e) {} }
+
+        const midnightEvent = events.find(ev => ev.config.name === "midnight");
+        if (midnightEvent) { try { midnightEvent.run({ api, config, threadID: config.midnightGroupID }); } catch (e) {} }
         
-        // ১. কাস্টম অটো-রিপ্লাই, অটো-নিকনেম, ভয়েস ইত্যাদি
-        for (const ev of events) {
-          if (ev.config.eventType === "message") {
+        console.log("✅ সব Cronjobs চালু হয়েছে");
+      } else {
+        console.log("⚠️ সতর্কতা: azanGroupID সেট করা নেই, তাই আজান/মিডনাইট কাজ করবে না।");
+      }
+    }, 5000);
+
+    // 🎯 মেসেজ ও ইভেন্ট লিসেনার
+    api.listenMqtt(async (err, event) => {
+      try {
+        if (err) return console.error("⚠️ MQTT error:", err?.message || err);
+
+        // Auto Seen
+        try {
+          const seenPath = path.join(__dirname, "cache", "autoseen.txt");
+          if (fs.existsSync(seenPath) && fs.readFileSync(seenPath, "utf8").trim() === "true") {
+            api.markAsRead(event.threadID, () => {});
+          }
+        } catch (e) {}
+
+        // Event Handler
+        if (event && event.type === "event") {
+          for (const ev of events) {
+            if (ev.config.eventType === "event") {
+              try {
+                await ev.run({ api, event, config });
+              } catch (e) {
+                console.error(`⚠️ ইভেন্ট এরর (${ev.config.name}):`, e?.message || e);
+              }
+            }
+          }
+          return;
+        }
+
+        // Message Handler
+        if (event && event.type === "message" && event.body) {
+          for (const ev of events) {
+            if (ev.config.eventType === "message") {
+              try {
+                await ev.run({ api, event, config });
+              } catch (e) {
+                console.error(`⚠️ মেসেজ ইভেন্ট এরর (${ev.config.name}):`, e?.message || e);
+              }
+            }
+          }
+
+          const body = event.body.trim();
+          if (!body.startsWith(config.prefix)) return;
+
+          const args = body.slice(config.prefix.length).trim().split(/ +/);
+          const commandName = args.shift().toLowerCase();
+          const cmd = commands.get(commandName);
+
+          if (cmd) {
+            if (config.adminOnly === true && commandName !== "onlyadmin") {
+              const admins = config.adminIDs || [];
+              const isBotAdmin = admins.includes(event.senderID) || event.senderID === config.ownerID;
+              if (!isBotAdmin) return; 
+            }
+            
             try {
-              await ev.run({ api, event, config });
+              await cmd.run({ api, event, args, config, commands });
             } catch (e) {
-              console.error(`⚠️ মেসেজ ইভেন্ট এরর (${ev.config.name}):`, e?.message || e);
+              console.error(`কমান্ড ${commandName} এ ত্রুটি:`, e?.message || e);
+              api.sendMessageMqtt(`❌ কমান্ড চালাতে সমস্যা হয়েছে: ${e.message}`, event.threadID)
+                .catch(err => console.error("❌ send failed:", err.message));
             }
           }
         }
-
-        // ২. কমান্ড চেক
-        const body = event.body.trim();
-        if (!body.startsWith(config.prefix)) return;
-
-        const args = body.slice(config.prefix.length).trim().split(/ +/);
-        const commandName = args.shift().toLowerCase();
-        const cmd = commands.get(commandName);
-
-        if (cmd) {
-          // Admin Only Mode চেক
-          if (config.adminOnly === true && commandName !== "onlyadmin") {
-            const admins = config.adminIDs || [];
-            const isBotAdmin = admins.includes(event.senderID) || event.senderID === config.ownerID;
-            if (!isBotAdmin) return; 
-          }
-          
-          try {
-            await cmd.run({ api, event, args, config, commands });
-          } catch (e) {
-            console.error(`কমান্ড ${commandName} এ ত্রুটি:`, e?.message || e);
-            api.sendMessageMqtt(`❌ কমান্ড চালাতে সমস্যা হয়েছে: ${e.message}`, event.threadID)
-              .catch(err => console.error("❌ send failed:", err.message));
-          }
-        }
+      } catch (outerErr) {
+        console.error("⚠️ Listener handler error:", outerErr?.message || outerErr);
       }
-    } catch (outerErr) {
-      console.error("⚠️ Listener handler error:", outerErr?.message || outerErr);
-    }
+    });
   });
-});
+}
+
+// বট চালু করা
+startBot();
