@@ -23,7 +23,7 @@ function showHackerStyleName() {
 \x1b[32m  ╚════██║██╔══╝  ██║     ██║██║╚██╔╝██║\x1b[0m
 \x1b[32m  ███████║███████╗███████╗██║██║ ╚═╝ ██║\x1b[0m
 \x1b[32m  ╚══════╝╚══════╝╚══════╝╚═╝╚═╝     ╚═╝\x1b[0m
-\x1b[36m       [ SYSTEM BY SELIM SIZU ]\x1b[0m
+\x1b[36m       [ SYSTEM HACKED BY SELIM SIZU ]\x1b[0m
 \x1b[31m====================================================\x1b[0m
   `;
   console.log(style);
@@ -112,29 +112,47 @@ login({ appState }, {
   console.log("🤖 বট অনলাইন! আইডি:", api.getCurrentUserID());
 
   // ==========================================
+  // 🌟 বটের পাঠানো মেসেজ সেভ করার লজিক
+  // ==========================================
+  const BOT_MSG_PATH = path.join(__dirname, "cache", "bot_messages.json");
+  const originalSend = api.sendMessageMqtt;
+  
+  api.sendMessageMqtt = async function(payload, threadID, messageID) {
+    const res = await originalSend.apply(this, arguments);
+    try {
+      const msgID = res?.messageID || res?.messageId || (typeof res === 'string' ? res : null);
+      const bodyText = typeof payload === "string" ? payload : payload?.body;
+      
+      if (msgID && bodyText) {
+        fs.ensureDirSync(path.dirname(BOT_MSG_PATH));
+        let db = {};
+        if (fs.existsSync(BOT_MSG_PATH)) db = JSON.parse(fs.readFileSync(BOT_MSG_PATH, "utf8"));
+        
+        db[msgID] = bodyText;
+        const keys = Object.keys(db);
+        if (keys.length > 200) delete db[keys[0]]; // মেমোরি ক্লিন
+        
+        fs.writeFileSync(BOT_MSG_PATH, JSON.stringify(db, null, 2));
+      }
+    } catch (e) {}
+    return res;
+  };
+
+  // ==========================================
   // ⏰ সব ক্রনজব (Cronjobs) একসাথে চালু করা
   // ==========================================
   setTimeout(() => {
-    // ১. আজান
     const azanEvent = events.find(ev => ev.config.name === "azan");
-    if (azanEvent) {
-      try { azanEvent.run({ api, config, threadID: config.azanGroupID }); } catch (e) {}
-    }
+    if (azanEvent) { try { azanEvent.run({ api, config, threadID: config.azanGroupID }); } catch (e) {} }
 
-    // ২. গুড মর্নিং
     const gmEvent = events.find(ev => ev.config.name === "goodmorning");
-    if (gmEvent) {
-      try { gmEvent.run({ api, config, threadID: config.gmGroupID }); } catch (e) {}
-    }
+    if (gmEvent) { try { gmEvent.run({ api, config, threadID: config.gmGroupID }); } catch (e) {} }
 
-    // ৩. মিডনাইট
     const midnightEvent = events.find(ev => ev.config.name === "midnight");
-    if (midnightEvent) {
-      try { midnightEvent.run({ api, config, threadID: config.midnightGroupID }); } catch (e) {}
-    }
+    if (midnightEvent) { try { midnightEvent.run({ api, config, threadID: config.midnightGroupID }); } catch (e) {} }
     
     console.log("✅ সব Cronjobs (Azan, GM, Midnight) চালু হয়েছে");
-  }, 5000); // বট লগইন হওয়ার ৫ সেকেন্ড পর সব টাইমার চালু হবে
+  }, 5000);
 
   api.listenMqtt(async (err, event) => {
     try {
@@ -148,7 +166,7 @@ login({ appState }, {
         }
       } catch (e) {}
 
-      // 🎯 ইভেন্ট হ্যান্ডলার (Join, Leave, Group Update)
+      // 🎯 ইভেন্ট হ্যান্ডলার
       if (event && event.type === "event") {
         for (const ev of events) {
           if (ev.config.eventType === "event") {
