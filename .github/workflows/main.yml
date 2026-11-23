@@ -2,8 +2,8 @@ name: Bot Auto-Run
 
 on:
   workflow_dispatch: # ম্যানুয়ালি চালু করার জন্য
-  schedule:
-    - cron: '0 */6 * * *' # প্রতি ৬ ঘণ্টায় একবার অটো রিস্টার্ট হবে
+ # schedule:
+   # - cron: '0 */6 * * *' # প্রতি ৬ ঘণ্টায় একবার অটো রিস্টার্ট হবে
 
 jobs:
   run-bot:
